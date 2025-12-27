@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          check-latest: false
+        env:
+          PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+      - name: Install Java (required for Spark)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk
+
+      - name: Set JAVA_HOME
+        run: |
+          JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
+          echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
+          echo "$JAVA_HOME/bin" >> $GITHUB_PATH
+          java -version
+
+      - name: Install dependencies
+        run: |
+          python -m ensurepip
+          python -m pip install --no-cache-dir -r requirements.txt
+          python -m pip install --no-cache-dir pytest ruff pyspark graphframes
+
+      - name: Lint
+        run: ruff check src tests
+
+      - name: Run Spark unit tests
+        env:
+          SPARK_LOCAL_IP: 127.0.0.1
+        run: pytest -v tests

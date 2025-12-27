@@ -1,0 +1,38 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  cd:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build deps
+        run: |
+          pip install -r requirements.txt
+
+      - name: Package ETL code
+        run: |
+          mkdir -p dist
+          tar -czf dist/etl_bundle.tar.gz src/
+
+      - name: Upload to S3
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - run: |
+          aws s3 cp dist/etl_bundle.tar.gz s3://my-etl-artifacts/etl_bundle.tar.gz
