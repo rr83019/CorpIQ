@@ -1,0 +1,390 @@
+# Application Configuration
+app:
+  name: ${APP_NAME:-corporate-data-harmonization}
+  version: ${APP_VERSION:-1.0.0}
+  environment: ${APP_ENV:-production}
+
+# Spark Configuration
+spark:
+  app_name: ${SPARK_APP_NAME:-CorpIQ}
+  master: ${SPARK_MASTER:-spark://spark-master:7077}
+
+  configs:
+    spark.jars.packages: ${SPARK_JARS_PACKAGES}
+
+    spark.sql.extensions: org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
+    spark.sql.catalog.iceberg: org.apache.iceberg.spark.SparkCatalog
+    spark.sql.catalog.iceberg.catalog-impl: org.apache.iceberg.rest.RESTCatalog
+    spark.sql.catalog.iceberg.uri: ${ICEBERG_REST_URI}
+    spark.sql.catalog.iceberg.warehouse: ${ICEBERG_WAREHOUSE}
+    spark.sql.catalog.iceberg.io-impl: org.apache.iceberg.aws.s3.S3FileIO
+
+    spark.hadoop.fs.s3.impl: org.apache.hadoop.fs.s3a.S3AFileSystem
+    spark.hadoop.fs.s3a.impl: org.apache.hadoop.fs.s3a.S3AFileSystem
+    spark.hadoop.fs.s3a.aws.credentials.provider: com.amazonaws.auth.DefaultAWSCredentialsProviderChain
+    spark.hadoop.fs.s3a.access.key: ${AWS_ACCESS_KEY_ID}
+    spark.hadoop.fs.s3a.secret.key: ${AWS_SECRET_ACCESS_KEY}
+    spark.hadoop.fs.s3a.endpoint: ${S3_ENDPOINT}
+    spark.hadoop.fs.s3a.path.style.access: ${S3_PATH_STYLE:-false}
+
+    spark.sql.catalog.iceberg.client.region: ${AWS_REGION}
+    spark.aws.region: ${AWS_REGION}
+    spark.hadoop.aws.region: ${AWS_REGION}
+    spark.executorEnv.AWS_REGION: ${AWS_REGION}
+    spark.driverEnv.AWS_REGION: ${AWS_REGION}
+
+    spark.sql.adaptive.enabled: "true"
+    spark.sql.adaptive.coalescePartitions.enabled: "true"
+    spark.sql.shuffle.partitions: ${SPARK_SHUFFLE_PARTITIONS:-200}
+
+    spark.executor.memory: ${SPARK_EXECUTOR_MEMORY:-4g}
+    spark.driver.memory: ${SPARK_DRIVER_MEMORY:-2g}
+
+# Data Sources
+data_sources:
+  source1:
+    path: ${SOURCE1_PATH}
+    format: ${SOURCE1_FORMAT:-csv}
+    schema_validation: ${SOURCE1_SCHEMA_VALIDATION:-true}
+
+  source2:
+    path: ${SOURCE2_PATH}
+    format: ${SOURCE2_FORMAT:-csv}
+    schema_validation: ${SOURCE2_SCHEMA_VALIDATION:-true}
+
+# Iceberg Configuration
+iceberg:
+  catalog_name: ${ICEBERG_CATALOG_NAME:-iceberg}
+  database: ${ICEBERG_DATABASE:-corporate_db}
+  table_name: ${ICEBERG_TABLE:-corporate_registry}
+
+  partition_spec:
+    - field: ${ICEBERG_PARTITION_FIELD:-created_at}
+      transform: ${ICEBERG_PARTITION_TRANSFORM:-day}
+
+  sort_order:
+    - field: ${ICEBERG_SORT_FIELD:-corporate_id}
+      direction: ${ICEBERG_SORT_DIRECTION:-asc}
+
+# Entity Resolution Configuration
+entity_resolution:
+  matching_threshold: ${ENTITY_MATCH_THRESHOLD:-0.6}
+
+  blocking_fields:
+    - country
+    - industry_sector
+
+  fuzzy_match_fields:
+    - name: corporate_name
+      weight: ${FUZZY_NAME_WEIGHT:-0.6}
+      method: ${FUZZY_NAME_METHOD:-jaro_winkler}
+
+    - name: address
+      weight: ${FUZZY_ADDRESS_WEIGHT:-0.3}
+      method: ${FUZZY_ADDRESS_METHOD:-token_sort}
+
+    - name: postal_code
+      weight: ${FUZZY_POSTAL_WEIGHT:-0.1}
+      method: ${FUZZY_POSTAL_METHOD:-exact}
+
+  deduplication_strategy: ${DEDUP_STRATEGY:-weighted_score}
+
+# LLM Configuration for Adverse Media
+llm:
+  provider: ${LLM_PROVIDER:-openai}
+  model: ${LLM_MODEL:-gpt-4o}
+  api_key_env: ${OPENAI_API_KEY}
+
+  max_tokens: ${LLM_MAX_TOKENS:-1000}
+  temperature: ${LLM_TEMPERATURE:-0.3}
+
+  rate_limit:
+    max_calls_per_minute: ${LLM_MAX_CALLS_PER_MINUTE:-50}
+    max_retries: ${LLM_MAX_RETRIES:-3}
+    backoff_factor: ${LLM_BACKOFF_FACTOR:-2}
+
+  adverse_media:
+    search_enabled: ${ADVERSE_MEDIA_ENABLED:-true}
+    search_days_back: ${ADVERSE_MEDIA_DAYS_BACK:-365}
+
+    keywords:
+      - fraud
+      - lawsuit
+      - bankruptcy
+      - scandal
+      - investigation
+      - violation
+      - penalty
+
+    batch_size: ${ADVERSE_MEDIA_BATCH_SIZE:-10}
+
+# Data Quality Rules
+data_quality:
+  validation_rules:
+    country:
+      - type: not_null
+      - type: min_length
+        value: 2
+
+    revenue:
+      - type: numeric
+      - type: positive
+
+    profit:
+      - type: numeric
+
+  error_threshold: ${DATA_QUALITY_ERROR_THRESHOLD:-0.05}
+
+# Logging
+logging:
+  level: ${LOG_LEVEL:-INFO}
+  format: "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}"
+  rotation: ${LOG_ROTATION:-500 MB}
+  retention: ${LOG_RETENTION:-30 days}
+  log_to_file: ${LOG_TO_FILE:-true}
+  log_file_path: ${LOG_FILE_PATH:-logs/pipeline.log}
+
+# Monitoring
+monitoring:
+  metrics_enabled: ${METRICS_ENABLED:-true}
+  prometheus_port: ${PROMETHEUS_PORT:-8000}
+  checkpoints_enabled: ${CHECKPOINTS_ENABLED:-true}
+  checkpoint_location: ${CHECKPOINT_LOCATION}
+
+# Performance Tuning
+performance:
+  cache_intermediate_results: ${CACHE_INTERMEDIATE_RESULTS:-true}
+  broadcast_join_threshold: ${BROADCAST_JOIN_THRESHOLD:-10MB}
+  max_records_per_file: ${MAX_RECORDS_PER_FILE:-500000}
+
+# Retry Configuration
+retry:
+  max_attempts: ${RETRY_MAX_ATTEMPTS:-3}
+  exponential_backoff: ${RETRY_EXPONENTIAL_BACKOFF:-true}
+  initial_wait_seconds: ${RETRY_INITIAL_WAIT:-5}
+  max_wait_seconds: ${RETRY_MAX_WAIT:-60}
+
+# ML Pipeline Configuration
+ml_pipeline:
+  name: ${ML_PIPELINE_NAME:-corporate-profit-prediction}
+  version: ${ML_PIPELINE_VERSION:-1.0.0}
+  description: ${ML_PIPELINE_DESCRIPTION:-Predict if corporation profit exceeds threshold}
+
+# Data Configuration
+data:
+  source_table: ${SOURCE_TABLE:-iceberg.corporate_db.corporate_registry}
+  target_column: ${TARGET_COLUMN:-profit_above_threshold}
+  profit_threshold: ${PROFIT_THRESHOLD:-10000000}
+
+  features:
+    numerical:
+      - revenue
+      - profit
+      - num_top_suppliers
+      - num_main_customers
+      - num_activity_places
+      - risk_score
+      - match_confidence
+
+    categorical:
+      - country
+      - industry_sector
+
+    text:
+      - corporate_name
+
+  train_test_split:
+    test_size: ${TEST_SIZE:-0.2}
+    validation_size: ${VALIDATION_SIZE:-0.1}
+    random_seed: ${DATA_RANDOM_SEED:-42}
+    stratify: ${STRATIFY_SPLIT:-true}
+
+  quality_checks:
+    min_records: ${MIN_RECORDS:-100}
+    max_null_percentage: ${MAX_NULL_PERCENTAGE:-0.3}
+    min_positive_class_ratio: ${MIN_POSITIVE_CLASS_RATIO:-0.1}
+    max_positive_class_ratio: ${MAX_POSITIVE_CLASS_RATIO:-0.9}
+
+# Feature Engineering
+feature_engineering:
+  derived_features:
+    - name: num_top_suppliers
+      description: Count of elements in top_suppliers array (0 if NULL)
+      expression: COALESCE(size(top_suppliers), 0)
+
+    - name: num_main_customers
+      description: Count of elements in main_customers array (0 if NULL)
+      expression: COALESCE(size(main_customers), 0)
+
+    - name: num_activity_places
+      description: Count of elements in activity_places array (0 if NULL)
+      expression: COALESCE(size(activity_places), 0)
+
+    - name: revenue_per_supplier
+      expression: CASE WHEN revenue IS NULL OR size(top_suppliers) = 0 THEN NULL ELSE revenue / size(top_suppliers) END
+
+    - name: profit_margin
+      expression: CASE WHEN revenue IS NULL OR revenue = 0 THEN NULL ELSE profit / revenue END
+
+    - name: supplier_customer_ratio
+      expression: CASE WHEN num_main_customers = 0 THEN NULL ELSE num_top_suppliers / num_main_customers END
+
+  scaling:
+    method: ${SCALING_METHOD:-standard}
+    features:
+      - revenue
+      - profit
+      - revenue_per_supplier
+      - num_top_suppliers
+      - num_main_customers
+
+  categorical_encoding:
+    method: ${CATEGORICAL_ENCODING_METHOD:-one_hot}
+    max_categories: ${MAX_CATEGORIES:-50}
+    handle_unknown: ${HANDLE_UNKNOWN_CATEGORIES:-infrequent}
+
+  feature_selection:
+    enabled: ${FEATURE_SELECTION_ENABLED:-true}
+    method: ${FEATURE_SELECTION_METHOD:-correlation}
+    threshold: ${FEATURE_SELECTION_THRESHOLD:-0.05}
+
+# Model Configuration
+model:
+  algorithm: ${MODEL_ALGORITHM:-logistic_regression}
+
+  hyperparameters:
+    logistic_regression:
+      maxIter: ${LR_MAX_ITER:-100}
+      regParam: ${LR_REG_PARAM:-0.01}
+      elasticNetParam: ${LR_ELASTIC_NET:-0.0}
+      family: binomial
+      threshold: ${LR_THRESHOLD:-0.5}
+
+    random_forest:
+      numTrees: ${RF_NUM_TREES:-100}
+      maxDepth: ${RF_MAX_DEPTH:-10}
+      minInstancesPerNode: ${RF_MIN_INSTANCES:-1}
+      subsamplingRate: ${RF_SUBSAMPLING_RATE:-0.8}
+
+    gradient_boosted_trees:
+      maxIter: ${GBT_MAX_ITER:-100}
+      maxDepth: ${GBT_MAX_DEPTH:-5}
+      stepSize: ${GBT_STEP_SIZE:-0.1}
+
+  class_imbalance:
+    method: ${CLASS_IMBALANCE_METHOD:-auto}
+    target_ratio: ${CLASS_IMBALANCE_TARGET_RATIO:-0.5}
+
+# Hyperparameter Tuning
+hyperparameter_tuning:
+  enabled: ${HYPERPARAM_TUNING_ENABLED:-false}
+  method: ${HYPERPARAM_TUNING_METHOD:-grid_search}
+
+  param_grid:
+    logistic_regression:
+      regParam: [0.001, 0.01, 0.1, 1.0]
+      elasticNetParam: [0.0, 0.5, 1.0]
+      maxIter: [50, 100, 200]
+
+  cross_validation:
+    num_folds: ${CV_NUM_FOLDS:-5}
+    parallelism: ${CV_PARALLELISM:-4}
+
+  optimization:
+    metric: ${OPTIMIZATION_METRIC:-areaUnderROC}
+    mode: ${OPTIMIZATION_MODE:-maximize}
+
+# Model Evaluation
+evaluation:
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - areaUnderROC
+    - areaUnderPR
+
+  thresholds:
+    min_accuracy: ${MIN_ACCURACY:-0.7}
+    min_precision: ${MIN_PRECISION:-0.65}
+    min_recall: ${MIN_RECALL:-0.65}
+    min_auc_roc: ${MIN_AUC_ROC:-0.75}
+
+  validation:
+    enabled: ${MODEL_VALIDATION_ENABLED:-true}
+    holdout_test: ${HOLDOUT_TEST_ENABLED:-true}
+    cross_validation: ${EVAL_CROSS_VALIDATION:-false}
+
+# MLflow Configuration
+mlflow:
+  tracking_uri: ${MLFLOW_TRACKING_URI}
+  experiment_name: ${MLFLOW_EXPERIMENT_NAME:-corporate-profit-prediction}
+
+  registry:
+    model_name: ${MLFLOW_MODEL_NAME:-corporate-profit-predictor}
+    staging_enabled: ${MLFLOW_STAGING_ENABLED:-true}
+
+    production_promotion:
+      auto_promote: ${MLFLOW_AUTO_PROMOTE:-false}
+      approval_required: ${MLFLOW_APPROVAL_REQUIRED:-true}
+      min_accuracy: ${MLFLOW_MIN_ACCURACY:-0.8}
+
+  artifacts:
+    log_model: ${MLFLOW_LOG_MODEL:-true}
+    log_feature_importance: ${MLFLOW_LOG_FEATURE_IMPORTANCE:-true}
+    log_confusion_matrix: ${MLFLOW_LOG_CONFUSION_MATRIX:-true}
+    log_roc_curve: ${MLFLOW_LOG_ROC_CURVE:-true}
+    log_pr_curve: ${MLFLOW_LOG_PR_CURVE:-true}
+    log_training_data_profile: ${MLFLOW_LOG_DATA_PROFILE:-true}
+
+  tags:
+    project: ${MLFLOW_PROJECT_TAG:-corporate-data-harmonization}
+    model_type: ${MLFLOW_MODEL_TYPE_TAG:-classification}
+    framework: ${MLFLOW_FRAMEWORK_TAG:-spark-ml}
+
+# Model Monitoring
+model_monitoring:
+  enabled: ${MODEL_MONITORING_ENABLED:-true}
+
+  data_drift:
+    enabled: ${DATA_DRIFT_ENABLED:-true}
+    baseline_window: ${DATA_DRIFT_BASELINE_DAYS:-30}
+    detection_window: ${DATA_DRIFT_DETECTION_DAYS:-7}
+    threshold: ${DATA_DRIFT_THRESHOLD:-0.05}
+
+  performance_monitoring:
+    enabled: ${PERFORMANCE_MONITORING_ENABLED:-true}
+    metrics_to_track:
+      - accuracy
+      - precision
+      - recall
+      - f1
+    alert_threshold_drop: ${ALERT_THRESHOLD_DROP:-0.05}
+
+  prediction_monitoring:
+    log_predictions: ${LOG_PREDICTIONS:-true}
+    sample_rate: ${PREDICTION_SAMPLE_RATE:-0.1}
+    store_location: ${PREDICTION_STORE_LOCATION}
+
+# Reproducibility
+reproducibility:
+  seed: ${GLOBAL_SEED:-42}
+  deterministic: ${DETERMINISTIC_RUNS:-true}
+  track_environment: ${TRACK_ENVIRONMENT:-true}
+
+  version_control:
+    track_code_version: ${TRACK_CODE_VERSION:-true}
+    track_data_version: ${TRACK_DATA_VERSION:-true}
+    track_config_version: ${TRACK_CONFIG_VERSION:-true}
+
+# Resource Management
+resources:
+  spark:
+    executor_memory: ${RESOURCE_EXECUTOR_MEMORY:-4g}
+    executor_cores: ${RESOURCE_EXECUTOR_CORES:-2}
+    num_executors: ${RESOURCE_NUM_EXECUTORS:-4}
+    driver_memory: ${RESOURCE_DRIVER_MEMORY:-2g}
+
+  training:
+    max_training_time_minutes: ${MAX_TRAINING_TIME_MINUTES:-60}
+    checkpoint_interval: ${TRAINING_CHECKPOINT_INTERVAL:-10}
